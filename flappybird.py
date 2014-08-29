@@ -100,7 +100,7 @@ class PipePair:
             the form (X, Y).
         """
         bx, by = bird_position
-        in_x_range = bx + BIRD_WIDTH > self.x and bx < self.x + PIPE_WIDTH
+        in_x_range = bx - PIPE_WIDTH < self.x < bx + BIRD_WIDTH
         in_y_range = (by < self.top_height_px or
                       by + BIRD_HEIGHT > WIN_HEIGHT - self.bottom_height_px)
         return in_x_range and in_y_range
