@@ -214,6 +214,13 @@ def main():
                 pp = random_pipe_pair(images['pipe-end'], images['pipe-body'])
                 pipes.append(pp)
         
+        # check for collisions
+        pipe_collisions = [p.is_bird_collision((BIRD_X, bird_y)) for p in pipes]
+        if (0 >= bird_y or bird_y >= WIN_HEIGHT - BIRD_HEIGHT or
+                True in pipe_collisions):
+            print('You crashed! Score: %i' % score)
+            done = True
+        
         for x in (0, WIN_WIDTH / 2):
             display_surface.blit(images['background'], (x, 0))
         
@@ -248,14 +255,7 @@ def main():
         score_x = WIN_WIDTH/2 - score_surface.get_width()/2
         display_surface.blit(score_surface, (score_x, PIPE_PIECE_HEIGHT))
 
-        pygame.display.update()
-
-        # check for collisions
-        pipe_collisions = [p.is_bird_collision((BIRD_X, bird_y)) for p in pipes]
-        if (0 >= bird_y or bird_y >= WIN_HEIGHT - BIRD_HEIGHT or
-                True in pipe_collisions):
-            print('You crashed! Score: %i' % score)
-            break
+        pygame.display.flip()
     pygame.quit()
 
 
