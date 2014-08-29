@@ -40,26 +40,47 @@ class PipePair:
         the bottom pipe.
     """
 
-    def __init__(self, surface, top_pieces, bottom_pieces):
-        """Initialises a new PipePair with the given arguments.
-
+    def __init__(self, pipe_end_img, pipe_body_img):
+        """Initialises a new random PipePair.
+        
         The new PipePair will automatically be assigned an x attribute of
         WIN_WIDTH.
-
+        
         Arguments:
-        surface: A pygame.Surface which can be blitted to the main
-            surface to display the PipePair.  You are responsible for
-            converting it, if desired.
-        top_pieces: The number of pieces, including the end piece, which
-            make up the top pipe.
-        bottom_pieces: The number of pieces, including the end piece,
-            which make up the bottom pipe.
+        pipe_end_img: The image to use to represent a pipe's end piece.
+        pipe_body_img: The image to use to represent one horizontal slice
+            of a pipe's body.
         """
         self.x = WIN_WIDTH
-        self.surface = surface
-        self.top_pieces = top_pieces
-        self.bottom_pieces = bottom_pieces
         self.score_counted = False
+        
+        self.surface = pygame.Surface((PIPE_WIDTH, WIN_HEIGHT), SRCALPHA)
+        self.surface.convert()   # speeds up blitting
+        self.surface.fill((0, 0, 0, 0))
+        total_pipe_body_pieces = int(
+            (WIN_HEIGHT -            # fill window from top to bottom
+            3 * BIRD_HEIGHT -        # make room for bird to fit through
+            3 * PIPE_PIECE_HEIGHT) / # 2 end pieces + 1 body piece for top pipe
+            PIPE_PIECE_HEIGHT        # to get number of pipe pieces
+        )
+        self.bottom_pieces = randint(1, total_pipe_body_pieces)
+        self.top_pieces = total_pipe_body_pieces - self.bottom_pieces
+        
+        # bottom pipe
+        for i in range(1, self.bottom_pieces + 1):
+            surface.blit(pipe_body_img, (0, WIN_HEIGHT - i*PIPE_PIECE_HEIGHT))
+        bottom_pipe_end_y = WIN_HEIGHT - self.bottom_pieces*PIPE_PIECE_HEIGHT
+        surface.blit(pipe_end_img, (0, bottom_pipe_end_y - PIPE_PIECE_HEIGHT))
+        
+        # top pipe
+        for i in range(self.top_pieces):
+            surface.blit(pipe_body_img, (0, i * PIPE_PIECE_HEIGHT))
+        top_pipe_end_y = self.top_pieces * PIPE_PIECE_HEIGHT
+        surface.blit(pipe_end_img, (0, top_pipe_end_y))
+        
+        # compensate for added end pieces
+        self.top_pieces += 1
+        self.bottom_pieces += 1
 
     @property
     def top_height_px(self):
@@ -144,47 +165,6 @@ def get_frame_jump_height(jump_step):
     return (1 - math.cos(frac_jump_done * math.pi)) * FRAME_BIRD_JUMP_HEIGHT
 
 
-def random_pipe_pair(pipe_end_img, pipe_body_img):
-    """Return a PipePair with pipes of random height.
-
-    The returned PipePair's surface will contain one bottom-up pipe
-    and one top-down pipe.  The pipes will have a distance of
-    BIRD_HEIGHT*3.
-    Both passed images are assumed to have a size of (PIPE_WIDTH,
-    PIPE_PIECE_HEIGHT).
-
-    Arguments:
-    pipe_end_img: The image to use to represent a pipe's endpiece.
-    pipe_body_img: The image to use to represent one horizontal slice
-        of a pipe's body.
-    """
-    surface = pygame.Surface((PIPE_WIDTH, WIN_HEIGHT), SRCALPHA)
-    surface.convert()   # speeds up blitting
-    surface.fill((0, 0, 0, 0))
-    max_pipe_body_pieces = int(
-        (WIN_HEIGHT -            # fill window from top to bottom
-        3 * BIRD_HEIGHT -        # make room for bird to fit through
-        3 * PIPE_PIECE_HEIGHT) / # 2 end pieces and 1 body piece for top pipe
-        PIPE_PIECE_HEIGHT        # to get number of pipe pieces
-    )
-    bottom_pipe_pieces = randint(1, max_pipe_body_pieces)
-    top_pipe_pieces = max_pipe_body_pieces - bottom_pipe_pieces
-    # bottom pipe
-    for i in range(1, bottom_pipe_pieces + 1):
-        surface.blit(pipe_body_img, (0, WIN_HEIGHT - i*PIPE_PIECE_HEIGHT))
-    bottom_pipe_end_y = WIN_HEIGHT - bottom_pipe_pieces*PIPE_PIECE_HEIGHT
-    surface.blit(pipe_end_img, (0, bottom_pipe_end_y - PIPE_PIECE_HEIGHT))
-    # top pipe
-    for i in range(top_pipe_pieces):
-        surface.blit(pipe_body_img, (0, i * PIPE_PIECE_HEIGHT))
-    top_pipe_end_y = top_pipe_pieces * PIPE_PIECE_HEIGHT
-    surface.blit(pipe_end_img, (0, top_pipe_end_y))
-    # compensate for added end pieces
-    top_pipe_pieces += 1
-    bottom_pipe_pieces += 1
-    return PipePair(surface, top_pipe_pieces, bottom_pipe_pieces)
-
-
 def main():
     """The application's entry point.
     
@@ -215,6 +195,12 @@ def main():
     score = 0
     done = paused = False
     while not done:
+        clock.tick(FPS)
+        if paused:
+            # Don't draw anything and don't process events -- we don't
+            # want new pipes to be added while the game is paused!
+            continue
+        
         for e in pygame.event.get():
             if e.type == QUIT or (e.type == KEYUP and e.key == K_ESCAPE):
                 done = True
@@ -227,10 +213,6 @@ def main():
             elif e.type == EVENT_NEWPIPE:
                 pp = random_pipe_pair(images['pipe-end'], images['pipe-body'])
                 pipes.append(pp)
-        
-        clock.tick(FPS)
-        if paused:
-            continue  # don't draw anything
         
         for x in (0, WIN_WIDTH / 2):
             display_surface.blit(images['background'], (x, 0))
