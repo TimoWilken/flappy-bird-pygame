@@ -68,15 +68,15 @@ class PipePair:
         
         # bottom pipe
         for i in range(1, self.bottom_pieces + 1):
-            surface.blit(pipe_body_img, (0, WIN_HEIGHT - i*PIPE_PIECE_HEIGHT))
+            self.surface.blit(pipe_body_img, (0, WIN_HEIGHT - i*PIPE_PIECE_HEIGHT))
         bottom_pipe_end_y = WIN_HEIGHT - self.bottom_pieces*PIPE_PIECE_HEIGHT
-        surface.blit(pipe_end_img, (0, bottom_pipe_end_y - PIPE_PIECE_HEIGHT))
+        self.surface.blit(pipe_end_img, (0, bottom_pipe_end_y - PIPE_PIECE_HEIGHT))
         
         # top pipe
         for i in range(self.top_pieces):
-            surface.blit(pipe_body_img, (0, i * PIPE_PIECE_HEIGHT))
+            self.surface.blit(pipe_body_img, (0, i * PIPE_PIECE_HEIGHT))
         top_pipe_end_y = self.top_pieces * PIPE_PIECE_HEIGHT
-        surface.blit(pipe_end_img, (0, top_pipe_end_y))
+        self.surface.blit(pipe_end_img, (0, top_pipe_end_y))
         
         # compensate for added end pieces
         self.top_pieces += 1
@@ -206,7 +206,7 @@ def main():
                         e.key in (K_UP, K_RETURN, K_SPACE)):
                     steps_to_jump = BIRD_JUMP_STEPS
                 elif e.type == EVENT_NEWPIPE:
-                    pp = random_pipe_pair(images['pipe-end'], images['pipe-body'])
+                    pp = PipePair(images['pipe-end'], images['pipe-body'])
                     pipes.append(pp)
         
         clock.tick(FPS)
