@@ -5,6 +5,7 @@
 import math
 import os
 from random import randint
+from collections import deque
 
 import pygame
 from pygame.locals import *
@@ -25,10 +26,10 @@ PIPE_PIECE_HEIGHT = BIRD_WIDTH = BIRD_HEIGHT = 32
 
 class PipePair:
     """Represents an obstacle.
-
+    
     A PipePair has a top and a bottom pipe, and only between them can
     the bird pass -- if it collides with either part, the game is over.
-
+    
     Attributes:
     x: The PipePair's X position.  Note that there is no y attribute,
         as it will only ever be 0.
@@ -39,7 +40,7 @@ class PipePair:
     bottom_pieces: The number of pieces, including the end piece, in
         the bottom pipe.
     """
-
+    
     def __init__(self, pipe_end_img, pipe_body_img):
         """Initialises a new random PipePair.
         
@@ -81,20 +82,20 @@ class PipePair:
         # compensate for added end pieces
         self.top_pieces += 1
         self.bottom_pieces += 1
-
+    
     @property
     def top_height_px(self):
         """Get the top pipe's height, in pixels."""
         return self.top_pieces * PIPE_PIECE_HEIGHT
-
+    
     @property
     def bottom_height_px(self):
         """Get the bottom pipe's height, in pixels."""
         return self.bottom_pieces * PIPE_PIECE_HEIGHT
-
+    
     def is_bird_collision(self, bird_position):
         """Get whether the bird crashed into a pipe in this PipePair.
-
+        
         Arguments:
         bird_position: The bird's position on screen, as a tuple in
             the form (X, Y).
@@ -149,14 +150,14 @@ def load_images():
 
 def get_frame_jump_height(jump_step):
     """Calculate how high the bird should jump in a particular frame.
-
+    
     This function uses the cosine function to achieve a smooth jump:
     In the first and last few frames, the bird jumps very little, in the
     middle of the jump, it jumps a lot.
     After a completed jump, the bird will have jumped
     FRAME_BIRD_JUMP_HEIGHT * BIRD_JUMP_STEPS pixels high, thus jumping,
     on average, FRAME_BIRD_JUMP_HEIGHT pixels every step.
-
+    
     Arguments:
     jump_step: Which frame of the jump this is, where one complete jump
         consists of BIRD_JUMP_STEPS frames.
@@ -184,13 +185,13 @@ def main():
     # the bird stays in the same x position, so BIRD_X is a constant
     BIRD_X = 50
     bird_y = int(WIN_HEIGHT/2 - BIRD_HEIGHT/2)  # center bird on screen
-
+    
     images = load_images()
-
+    
     # timer for adding new pipes
     pygame.time.set_timer(EVENT_NEWPIPE, PIPE_ADD_INTERVAL)
-    pipes = []
-
+    pipes = deque()
+    
     steps_to_jump = 2
     score = 0
     done = paused = False
@@ -225,37 +226,37 @@ def main():
         for x in (0, WIN_WIDTH / 2):
             display_surface.blit(images['background'], (x, 0))
         
+        while pipes[0].x <= -PIPE_WIDTH:
+            pipes.popleft()
+        
         for p in pipes:
             p.x -= FRAME_ANIMATION_WIDTH
-            if p.x <= -PIPE_WIDTH:  # PipePair is off screen
-                pipes.remove(p)
-            else:
-                display_surface.blit(p.surface, (p.x, 0))
-
+            display_surface.blit(p.surface, (p.x, 0))
+        
         # calculate position of jumping bird
         if steps_to_jump > 0:
             bird_y -= get_frame_jump_height(BIRD_JUMP_STEPS - steps_to_jump)
             steps_to_jump -= 1
         else:
             bird_y += FRAME_BIRD_DROP_HEIGHT
-
+        
         # because pygame doesn't support animated GIFs, we have to
         # animate the flapping bird ourselves
         if pygame.time.get_ticks() % 500 >= 250:
             display_surface.blit(images['bird-wingup'], (BIRD_X, bird_y))
         else:
             display_surface.blit(images['bird-wingdown'], (BIRD_X, bird_y))
-
+        
         # update and display score
         for p in pipes:
             if p.x + PIPE_WIDTH < BIRD_X and not p.score_counted:
                 score += 1
                 p.score_counted = True
-
+        
         score_surface = score_font.render(str(score), True, (255, 255, 255))
         score_x = WIN_WIDTH/2 - score_surface.get_width()/2
         display_surface.blit(score_surface, (score_x, PIPE_PIECE_HEIGHT))
-
+        
         pygame.display.flip()
     pygame.quit()
 
