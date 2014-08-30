@@ -195,24 +195,25 @@ def main():
     score = 0
     done = paused = False
     while not done:
-        clock.tick(FPS)
-        if paused:
-            # Don't draw anything and don't process events -- we don't
-            # want new pipes to be added while the game is paused!
-            continue
-        
         for e in pygame.event.get():
             if e.type == QUIT or (e.type == KEYUP and e.key == K_ESCAPE):
                 done = True
                 break
             elif e.type == KEYUP and e.key in (K_PAUSE, K_p):
                 paused = not paused
-            elif e.type == MOUSEBUTTONUP or (e.type == KEYUP and
-                    e.key in (K_UP, K_RETURN, K_SPACE)):
-                steps_to_jump = BIRD_JUMP_STEPS
-            elif e.type == EVENT_NEWPIPE:
-                pp = random_pipe_pair(images['pipe-end'], images['pipe-body'])
-                pipes.append(pp)
+            elif not paused:
+                if e.type == MOUSEBUTTONUP or (e.type == KEYUP and
+                        e.key in (K_UP, K_RETURN, K_SPACE)):
+                    steps_to_jump = BIRD_JUMP_STEPS
+                elif e.type == EVENT_NEWPIPE:
+                    pp = random_pipe_pair(images['pipe-end'], images['pipe-body'])
+                    pipes.append(pp)
+        
+        clock.tick(FPS)
+        if paused:
+            # Don't draw anything and don't process events -- we don't
+            # want new pipes to be added while the game is paused!
+            continue
         
         # check for collisions
         pipe_collisions = [p.is_bird_collision((BIRD_X, bird_y)) for p in pipes]
