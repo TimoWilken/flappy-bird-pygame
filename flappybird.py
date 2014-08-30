@@ -93,18 +93,18 @@ class PipePair:
         """Get the bottom pipe's height, in pixels."""
         return self.bottom_pieces * PIPE_PIECE_HEIGHT
     
-    def is_bird_collision(self, bird_position):
+    def collides_with(self, bird_position):
         """Get whether the bird crashed into a pipe in this PipePair.
         
         Arguments:
         bird_position: The bird's position on screen, as a tuple in
             the form (X, Y).
         """
-        bx, by = bird_position
-        in_x_range = bx - PIPE_WIDTH < self.x < bx + BIRD_WIDTH
-        in_y_range = (by < self.top_height_px or
-                      by + BIRD_HEIGHT > WIN_HEIGHT - self.bottom_height_px)
-        return in_x_range and in_y_range
+        bird = Rect(bird_position, (BIRD_WIDTH, BIRD_HEIGHT))
+        top_rect = Rect(self.x, 0, PIPE_WIDTH, self.top_height_px)
+        bottom_rect = Rect(self.x, WIN_HEIGHT - self.bottom_height_px,
+                           PIPE_WIDTH, self.bottom_height_px)
+        return bird.collidelist((top_rect, bottom_rect)) > -1
 
 
 def load_images():
@@ -217,16 +217,14 @@ def main():
             continue
         
         # check for collisions
-        pipe_collisions = [p.is_bird_collision((BIRD_X, bird_y)) for p in pipes]
-        if (0 >= bird_y or bird_y >= WIN_HEIGHT - BIRD_HEIGHT or
-                True in pipe_collisions):
-            print('You crashed! Score: %i' % score)
+        pipe_collisions = any(p.collides_with((BIRD_X, bird_y)) for p in pipes)
+        if pipe_collisions or 0 >= bird_y or bird_y >= WIN_HEIGHT - BIRD_HEIGHT:
             done = True
         
         for x in (0, WIN_WIDTH / 2):
             display_surface.blit(images['background'], (x, 0))
         
-        while pipes[0].x <= -PIPE_WIDTH:
+        while len(pipes) > 0 and pipes[0].x <= -PIPE_WIDTH:
             pipes.popleft()
         
         for p in pipes:
@@ -258,6 +256,7 @@ def main():
         display_surface.blit(score_surface, (score_x, PIPE_PIECE_HEIGHT))
         
         pygame.display.flip()
+    print('Game over! Score: %i' % score)
     pygame.quit()
 
 
