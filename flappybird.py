@@ -34,8 +34,7 @@ class Bird(pygame.sprite.Sprite):
     HEIGHT: The height, in pixels, of the bird's image.
     FRAME_DROP_HEIGHT: How many pixels the bird descends in one frame.
     FRAME_JUMP_HEIGHT: How many pixels the bird ascends in one frame
-        while jumping, on average.  See also the get_frame_jump_height
-        docstring.
+        while jumping, on average.  See also the Bird.update docstring.
     JUMP_STEPS: How many frames it takes the bird to execute a complete
         jump.
     """
@@ -43,7 +42,7 @@ class Bird(pygame.sprite.Sprite):
     WIDTH = HEIGHT = 32
     FRAME_DROP_HEIGHT = 3     # pixels per frame
     FRAME_JUMP_HEIGHT = 5     # pixels per frame
-    JUMP_STEPS = 20           # see get_frame_jump_height docstring
+    JUMP_STEPS = 20           # see Bird.update docstring
     
     def __init__(self, x, y, images):
         """Initialise a new Bird instance.
@@ -63,15 +62,24 @@ class Bird(pygame.sprite.Sprite):
     def update(self, steps_to_jump):
         """Update the bird's position.
         
+        This function uses the cosine function to achieve a smooth jump:
+        In the first and last few frames, the bird jumps very little, in the
+        middle of the jump, it jumps a lot.
+        After a completed jump, the bird will have jumped
+        Bird.FRAME_JUMP_HEIGHT * Bird.JUMP_STEPS pixels high, thus jumping,
+        on average, Bird.FRAME_JUMP_HEIGHT pixels every step.
+        
         Arguments:
-        steps_to_jump: The number of steps left to jump.  For more
-            information on this, see have a look at the
-            get_frame_jump_height docstring.
+        steps_to_jump: The number of steps left to jump, where a
+            complete jump consists of Bird.JUMP_STEPS frames.
         """
         if steps_to_jump > 0:
-            self.y -= get_frame_jump_height(self.JUMP_STEPS - steps_to_jump)
+            frac_jump_done = ((Bird.JUMP_STEPS - steps_to_jump) /
+                              float(Bird.JUMP_STEPS))
+            self.y -= (Bird.FRAME_JUMP_HEIGHT *
+                       (1 - math.cos(frac_jump_done * math.pi)))
         else:
-            self.y += self.FRAME_DROP_HEIGHT
+            self.y += Bird.FRAME_DROP_HEIGHT
     
     @property
     def image(self):
@@ -232,24 +240,6 @@ def load_images():
             # not supported in pygame
             'bird-wingup': load_image('bird_wing_up.png'),
             'bird-wingdown': load_image('bird_wing_down.png'),}
-
-
-def get_frame_jump_height(jump_step):
-    """Calculate how high the bird should jump in a particular frame.
-    
-    This function uses the cosine function to achieve a smooth jump:
-    In the first and last few frames, the bird jumps very little, in the
-    middle of the jump, it jumps a lot.
-    After a completed jump, the bird will have jumped
-    Bird.FRAME_JUMP_HEIGHT * Bird.JUMP_STEPS pixels high, thus jumping,
-    on average, Bird.FRAME_JUMP_HEIGHT pixels every step.
-    
-    Arguments:
-    jump_step: Which frame of the jump this is, where one complete jump
-        consists of Bird.JUMP_STEPS frames.
-    """
-    frac_jump_done = jump_step / float(Bird.JUMP_STEPS)
-    return (1 - math.cos(frac_jump_done * math.pi)) * Bird.FRAME_JUMP_HEIGHT
 
 
 def frames_to_msec(frames, fps=FPS):
