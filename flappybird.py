@@ -241,12 +241,12 @@ def get_frame_jump_height(jump_step):
     In the first and last few frames, the bird jumps very little, in the
     middle of the jump, it jumps a lot.
     After a completed jump, the bird will have jumped
-    FRAME_BIRD_JUMP_HEIGHT * BIRD_JUMP_STEPS pixels high, thus jumping,
-    on average, FRAME_BIRD_JUMP_HEIGHT pixels every step.
+    Bird.FRAME_JUMP_HEIGHT * Bird.JUMP_STEPS pixels high, thus jumping,
+    on average, Bird.FRAME_JUMP_HEIGHT pixels every step.
     
     Arguments:
     jump_step: Which frame of the jump this is, where one complete jump
-        consists of BIRD_JUMP_STEPS frames.
+        consists of Bird.JUMP_STEPS frames.
     """
     frac_jump_done = jump_step / float(Bird.JUMP_STEPS)
     return (1 - math.cos(frac_jump_done * math.pi)) * Bird.FRAME_JUMP_HEIGHT
@@ -268,7 +268,7 @@ def main():
     score_font = pygame.font.SysFont(None, 32, bold=True)  # default font
     images = load_images()
     
-    # the bird stays in the same x position, so BIRD_X is a constant
+    # the bird stays in the same x position, so bird.x is a constant
     # center bird on screen
     bird = Bird(50, int(WIN_HEIGHT/2 - Bird.HEIGHT/2),
                 (images['bird-wingup'], images['bird-wingdown']))
