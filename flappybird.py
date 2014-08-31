@@ -12,8 +12,8 @@ from pygame.locals import *
 
 
 FPS = 60
-FRAME_ANIMATION_SPEED = 180  # pixels per second
-WIN_WIDTH = 284 * 2          # BG image size: 284x512 px; tiled twice
+ANIMATION_SPEED = 0.18  # pixels per millisecond
+WIN_WIDTH = 284 * 2     # BG image size: 284x512 px; tiled twice
 WIN_HEIGHT = 512
 
 
@@ -28,34 +28,36 @@ class Bird(pygame.sprite.Sprite):
     Attributes:
     x: The bird's X coordinate.
     y: The bird's Y coordinate.
-    steps_to_jump: The number of steps left to jump, where a complete
-        jump consists of Bird.JUMP_STEPS frames.
+    msec_to_jump: The number of milliseconds left to jump, where a
+        complete jump lasts Bird.JUMP_DURATION milliseconds.
     
     Constants:
     WIDTH: The width, in pixels, of the bird's image.
     HEIGHT: The height, in pixels, of the bird's image.
-    FRAME_DROP_HEIGHT: How many pixels the bird descends in one frame.
-    FRAME_JUMP_HEIGHT: How many pixels the bird ascends in one frame
-        while jumping, on average.  See also the Bird.update docstring.
-    JUMP_STEPS: How many frames it takes the bird to execute a complete
-        jump.
+    DROP_SPEED: With which speed, in pixels per millisecond, the bird
+        descends in one second while not jumping.
+    JUMP_SPEED: With which speed, in pixels per millisecond, the bird
+        ascends in one second while jumping, on average.  See also the
+        Bird.update docstring.
+    JUMP_DURATION: The number of milliseconds it takes the bird to
+        execute a complete jump.
     """
     
     WIDTH = HEIGHT = 32
-    FRAME_DROP_HEIGHT = 3     # pixels per frame
-    FRAME_JUMP_HEIGHT = 5     # pixels per frame
-    JUMP_STEPS = 20           # see Bird.update docstring
+    DROP_SPEED = 0.18
+    JUMP_SPEED = 0.3
+    JUMP_DURATION = 333.3
     
-    def __init__(self, x, y, steps_to_jump, images):
+    def __init__(self, x, y, msec_to_jump, images):
         """Initialise a new Bird instance.
         
         Arguments:
         x: The bird's initial X coordinate.
         y: The bird's initial Y coordinate.
-        steps_to_jump: The number of steps left to jump, where a
-            complete jump consists of Bird.JUMP_STEPS frames.  Use this
-            if you want the bird to make a (small?) jump at the very
-            beginning of the game.
+        msec_to_jump: The number of milliseconds left to jump, where a
+            complete jump lasts Bird.JUMP_DURATION milliseconds.  Use
+            this if you want the bird to make a (small?) jump at the
+            very beginning of the game.
         images: A tuple containing the images used by this bird.  It
             must contain the following images, in the following order:
             0. image of the bird with its wing pointing upward
@@ -63,29 +65,32 @@ class Bird(pygame.sprite.Sprite):
         """
         super(Bird, self).__init__()
         self.x, self.y = x, y
-        self.steps_to_jump = steps_to_jump
+        self.msec_to_jump = msec_to_jump
         self._img_wingup, self._img_wingdown = images
     
-    def update(self):
+    def update(self, delta_frames=1):
         """Update the bird's position.
         
         This function uses the cosine function to achieve a smooth jump:
         In the first and last few frames, the bird jumps very little, in the
         middle of the jump, it jumps a lot.
-        After a completed jump, the bird will have jumped
-        Bird.FRAME_JUMP_HEIGHT * Bird.JUMP_STEPS pixels high, thus jumping,
-        on average, Bird.FRAME_JUMP_HEIGHT pixels every step.
-        This Bird's steps_to_jump attribute will automatically be
-        decremented if it was > 0 when this method was called.
+        One complete jump lasts JUMP_DURATION milliseconds, during which
+        the bird ascends with an average speed of JUMP_SPEED px/ms.
+        This Bird's msec_to_jump attribute will automatically be
+        decreased accordingly if it was > 0 when this method was called.
+        
+        Attributes:
+        delta_frames: The number of frames elapsed since this method was
+            last called.
         """
-        if self.steps_to_jump > 0:
-            frac_jump_done = ((Bird.JUMP_STEPS - self.steps_to_jump) /
-                              float(Bird.JUMP_STEPS))
-            self.y -= (Bird.FRAME_JUMP_HEIGHT *
+        if self.msec_to_jump > 0:
+            frac_jump_done = ((Bird.JUMP_DURATION - self.msec_to_jump) /
+                              Bird.JUMP_DURATION)
+            self.y -= (Bird.JUMP_SPEED * frames_to_msec(delta_frames) *
                        (1 - math.cos(frac_jump_done * math.pi)))
-            self.steps_to_jump -= 1
+            self.msec_to_jump -= frames_to_msec(delta_frames)
         else:
-            self.y += Bird.FRAME_DROP_HEIGHT
+            self.y += Bird.DROP_SPEED * frames_to_msec(delta_frames)
     
     @property
     def image(self):
@@ -137,8 +142,8 @@ class PipePair(pygame.sprite.Sprite):
     
     WIDTH = 80
     PIECE_HEIGHT = 32
-    ADD_INTERVAL = 3000        # milliseconds
-    ADD_EVENT = USEREVENT + 1  # custom event
+    ADD_INTERVAL = 3000
+    ADD_EVENT = USEREVENT + 1
     
     def __init__(self, pipe_end_img, pipe_body_img):
         """Initialises a new random PipePair.
@@ -210,8 +215,7 @@ class PipePair(pygame.sprite.Sprite):
         delta_frames: The number of frames elapsed since this method was
             last called.
         """
-        pixels_per_frame = FRAME_ANIMATION_SPEED / msec_to_frames(1000)
-        self.x -= pixels_per_frame * delta_frames
+        self.x -= ANIMATION_SPEED * frames_to_msec(delta_frames)
     
     def collides_with(self, rect):
         """Get whether an object collides with a pipe in this PipePair.
@@ -329,7 +333,7 @@ def main():
                 paused = not paused
             elif e.type == MOUSEBUTTONUP or (e.type == KEYUP and
                     e.key in (K_UP, K_RETURN, K_SPACE)):
-                bird.steps_to_jump = Bird.JUMP_STEPS
+                bird.msec_to_jump = Bird.JUMP_DURATION
             elif e.type == PipePair.ADD_EVENT:
                 pp = PipePair(images['pipe-end'], images['pipe-body'])
                 pipes.append(pp)
