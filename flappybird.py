@@ -67,6 +67,8 @@ class Bird(pygame.sprite.Sprite):
         self.x, self.y = x, y
         self.msec_to_jump = msec_to_jump
         self._img_wingup, self._img_wingdown = images
+        self._mask_wingup = pygame.mask.from_surface(self._img_wingup)
+        self._mask_wingdown = pygame.mask.from_surface(self._img_wingdown)
     
     def update(self, delta_frames=1):
         """Update the bird's position.
@@ -107,6 +109,17 @@ class Bird(pygame.sprite.Sprite):
             return self._img_wingdown
     
     @property
+    def mask(self):
+        """Get a bitmask for usage in collision detection.
+        
+        The bitmask excludes all pixels in self.image with a
+        transparency greater than 127."""
+        if pygame.time.get_ticks() % 500 >= 250:
+            return self._mask_wingup
+        else:
+            return self._mask_wingdown
+    
+    @property
     def rect(self):
         """Get the bird's position, width, and height, as a pygame.Rect."""
         return Rect(self.x, self.y, Bird.WIDTH, Bird.HEIGHT)
@@ -124,6 +137,9 @@ class PipePair(pygame.sprite.Sprite):
         ever be 0.
     image: A pygame.Surface which can be blitted to the display surface
         to display the PipePair.
+    mask: A bitmask which excludes all pixels in self.image with a
+        transparency greater than 127.  This can be used for collision
+        detection.
     top_pieces: The number of pieces, including the end piece, in the
         top pipe.
     bottom_pieces: The number of pieces, including the end piece, in
@@ -189,6 +205,9 @@ class PipePair(pygame.sprite.Sprite):
         # compensate for added end pieces
         self.top_pieces += 1
         self.bottom_pieces += 1
+        
+        # for collision detection
+        self.mask = pygame.mask.from_surface(self.image)
     
     @property
     def top_height_px(self):
@@ -217,17 +236,14 @@ class PipePair(pygame.sprite.Sprite):
         """
         self.x -= ANIMATION_SPEED * frames_to_msec(delta_frames)
     
-    def collides_with(self, rect):
-        """Get whether an object collides with a pipe in this PipePair.
+    def collides_with(self, bird):
+        """Get whether the bird collides with a pipe in this PipePair.
         
         Arguments:
-        rect: The pygame.Rect of the object that should be tested for
+        rect: The pygame.Rect of the bird that should be tested for
             collision with this PipePair.
         """
-        top_rect = Rect(self.x, 0, PipePair.WIDTH, self.top_height_px)
-        bottom_rect = Rect(self.x, WIN_HEIGHT - self.bottom_height_px,
-                           PipePair.WIDTH, self.bottom_height_px)
-        return rect.collidelist((top_rect, bottom_rect)) > -1
+        return pygame.sprite.collide_mask(self, bird)
 
 
 def load_images():
@@ -342,7 +358,7 @@ def main():
             continue  # don't draw anything
         
         # check for collisions
-        pipe_collision = any(p.collides_with(bird.rect) for p in pipes)
+        pipe_collision = any(p.collides_with(bird) for p in pipes)
         if pipe_collision or 0 >= bird.y or bird.y >= WIN_HEIGHT - Bird.HEIGHT:
             done = True
         
