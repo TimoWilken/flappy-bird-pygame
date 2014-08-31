@@ -28,6 +28,8 @@ class Bird(pygame.sprite.Sprite):
     Attributes:
     x: The bird's X coordinate.
     y: The bird's Y coordinate.
+    steps_to_jump: The number of steps left to jump, where a complete
+        jump consists of Bird.JUMP_STEPS frames.
     
     Constants:
     WIDTH: The width, in pixels, of the bird's image.
@@ -44,12 +46,16 @@ class Bird(pygame.sprite.Sprite):
     FRAME_JUMP_HEIGHT = 5     # pixels per frame
     JUMP_STEPS = 20           # see Bird.update docstring
     
-    def __init__(self, x, y, images):
+    def __init__(self, x, y, steps_to_jump, images):
         """Initialise a new Bird instance.
         
         Arguments:
         x: The bird's initial X coordinate.
         y: The bird's initial Y coordinate.
+        steps_to_jump: The number of steps left to jump, where a
+            complete jump consists of Bird.JUMP_STEPS frames.  Use this
+            if you want the bird to make a (small?) jump at the very
+            beginning of the game.
         images: A tuple containing the images used by this bird.  It
             must contain the following images, in the following order:
             0. image of the bird with its wing pointing upward
@@ -57,9 +63,10 @@ class Bird(pygame.sprite.Sprite):
         """
         super(Bird, self).__init__()
         self.x, self.y = x, y
+        self.steps_to_jump = steps_to_jump
         self._img_wingup, self._img_wingdown = images
     
-    def update(self, steps_to_jump):
+    def update(self):
         """Update the bird's position.
         
         This function uses the cosine function to achieve a smooth jump:
@@ -68,16 +75,15 @@ class Bird(pygame.sprite.Sprite):
         After a completed jump, the bird will have jumped
         Bird.FRAME_JUMP_HEIGHT * Bird.JUMP_STEPS pixels high, thus jumping,
         on average, Bird.FRAME_JUMP_HEIGHT pixels every step.
-        
-        Arguments:
-        steps_to_jump: The number of steps left to jump, where a
-            complete jump consists of Bird.JUMP_STEPS frames.
+        This Bird's steps_to_jump attribute will automatically be
+        decremented if it was > 0 when this method was called.
         """
         if steps_to_jump > 0:
-            frac_jump_done = ((Bird.JUMP_STEPS - steps_to_jump) /
+            frac_jump_done = ((Bird.JUMP_STEPS - self.steps_to_jump) /
                               float(Bird.JUMP_STEPS))
             self.y -= (Bird.FRAME_JUMP_HEIGHT *
                        (1 - math.cos(frac_jump_done * math.pi)))
+            self.steps_to_jump -= 1
         else:
             self.y += Bird.FRAME_DROP_HEIGHT
     
@@ -280,12 +286,11 @@ def main():
     
     # the bird stays in the same x position, so bird.x is a constant
     # center bird on screen
-    bird = Bird(50, int(WIN_HEIGHT/2 - Bird.HEIGHT/2),
+    bird = Bird(50, int(WIN_HEIGHT/2 - Bird.HEIGHT/2), 2
                 (images['bird-wingup'], images['bird-wingdown']))
     
     pipes = deque()
     
-    steps_to_jump = 2
     frame_clock = 0  # this counter is only incremented if the game isn't paused
     score = 0
     done = paused = False
@@ -305,7 +310,7 @@ def main():
                 paused = not paused
             elif e.type == MOUSEBUTTONUP or (e.type == KEYUP and
                     e.key in (K_UP, K_RETURN, K_SPACE)):
-                steps_to_jump = Bird.JUMP_STEPS
+                bird.steps_to_jump = Bird.JUMP_STEPS
             elif e.type == PipePair.ADD_EVENT:
                 pp = PipePair(images['pipe-end'], images['pipe-body'])
                 pipes.append(pp)
@@ -328,8 +333,7 @@ def main():
             p.x -= FRAME_ANIMATION_WIDTH
             display_surface.blit(p.image, (p.x, 0))
         
-        bird.update(steps_to_jump)
-        steps_to_jump -= 1
+        bird.update()
         
         display_surface.blit(bird.image, bird.rect)
         
