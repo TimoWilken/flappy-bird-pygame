@@ -12,8 +12,8 @@ from pygame.locals import *
 
 
 FPS = 60
-FRAME_ANIMATION_WIDTH = 3  # pixels per frame
-WIN_WIDTH = 284 * 2        # BG image size: 284x512 px; tiled twice
+FRAME_ANIMATION_SPEED = 180  # pixels per second
+WIN_WIDTH = 284 * 2          # BG image size: 284x512 px; tiled twice
 WIN_HEIGHT = 512
 
 
@@ -78,7 +78,7 @@ class Bird(pygame.sprite.Sprite):
         This Bird's steps_to_jump attribute will automatically be
         decremented if it was > 0 when this method was called.
         """
-        if steps_to_jump > 0:
+        if self.steps_to_jump > 0:
             frac_jump_done = ((Bird.JUMP_STEPS - self.steps_to_jump) /
                               float(Bird.JUMP_STEPS))
             self.y -= (Bird.FRAME_JUMP_HEIGHT *
@@ -107,15 +107,16 @@ class Bird(pygame.sprite.Sprite):
         return Rect(self.x, self.y, Bird.WIDTH, Bird.HEIGHT)
 
 
-class PipePair:
+class PipePair(pygame.sprite.Sprite):
     """Represents an obstacle.
     
     A PipePair has a top and a bottom pipe, and only between them can
     the bird pass -- if it collides with either part, the game is over.
     
     Attributes:
-    x: The PipePair's X position.  Note that there is no y attribute,
-        as it will only ever be 0.
+    x: The PipePair's X position.  This is a float, to make movement
+        smoother.  Note that there is no y attribute, as it will only
+        ever be 0.
     image: A pygame.Surface which can be blitted to the display surface
         to display the PipePair.
     top_pieces: The number of pieces, including the end piece, in the
@@ -136,21 +137,21 @@ class PipePair:
     
     WIDTH = 80
     PIECE_HEIGHT = 32
-    ADD_INTERVAL = 3000  # milliseconds
+    ADD_INTERVAL = 3000        # milliseconds
     ADD_EVENT = USEREVENT + 1  # custom event
     
     def __init__(self, pipe_end_img, pipe_body_img):
         """Initialises a new random PipePair.
         
         The new PipePair will automatically be assigned an x attribute of
-        WIN_WIDTH.
+        float(WIN_WIDTH - 1).
         
         Arguments:
         pipe_end_img: The image to use to represent a pipe's end piece.
         pipe_body_img: The image to use to represent one horizontal slice
             of a pipe's body.
         """
-        self.x = WIN_WIDTH
+        self.x = float(WIN_WIDTH - 1)
         self.score_counted = False
         
         self.image = pygame.Surface((PipePair.WIDTH, WIN_HEIGHT), SRCALPHA)
@@ -193,6 +194,24 @@ class PipePair:
     def bottom_height_px(self):
         """Get the bottom pipe's height, in pixels."""
         return self.bottom_pieces * PipePair.PIECE_HEIGHT
+    
+    @property
+    def visible(self):
+        return -PipePair.WIDTH < self.x < WIN_WIDTH
+    
+    @property
+    def rect(self):
+        return Rect(self.x, 0, PipePair.WIDTH, PipePair.PIECE_HEIGHT)
+    
+    def update(self, delta_frames=1):
+        """Update the PipePair's position.
+        
+        Attributes:
+        delta_frames: The number of frames elapsed since this method was
+            last called.
+        """
+        pixels_per_frame = FRAME_ANIMATION_SPEED / msec_to_frames(1000)
+        self.x -= pixels_per_frame * delta_frames
     
     def collides_with(self, rect):
         """Get whether an object collides with a pipe in this PipePair.
@@ -286,7 +305,7 @@ def main():
     
     # the bird stays in the same x position, so bird.x is a constant
     # center bird on screen
-    bird = Bird(50, int(WIN_HEIGHT/2 - Bird.HEIGHT/2), 2
+    bird = Bird(50, int(WIN_HEIGHT/2 - Bird.HEIGHT/2), 2,
                 (images['bird-wingup'], images['bird-wingdown']))
     
     pipes = deque()
@@ -326,15 +345,14 @@ def main():
         for x in (0, WIN_WIDTH / 2):
             display_surface.blit(images['background'], (x, 0))
         
-        while len(pipes) > 0 and pipes[0].x <= -PipePair.WIDTH:
+        while len(pipes) > 0 and not pipes[0].visible:
             pipes.popleft()
         
         for p in pipes:
-            p.x -= FRAME_ANIMATION_WIDTH
-            display_surface.blit(p.image, (p.x, 0))
+            p.update()
+            display_surface.blit(p.image, p.rect)
         
         bird.update()
-        
         display_surface.blit(bird.image, bird.rect)
         
         # update and display score
