@@ -252,6 +252,26 @@ def get_frame_jump_height(jump_step):
     return (1 - math.cos(frac_jump_done * math.pi)) * Bird.FRAME_JUMP_HEIGHT
 
 
+def frames_to_msec(frames, fps=FPS):
+    """Convert frames to milliseconds at the specified framerate.
+    
+    Arguments:
+    frames: How many frames to convert to milliseconds.
+    fps: The framerate to use for conversion.  Default: FPS.
+    """
+    return 1000.0 * frames / fps
+
+
+def msec_to_frames(milliseconds, fps=FPS):
+    """Convert milliseconds to frames at the specified framerate.
+    
+    Arguments:
+    milliseconds: How many milliseconds to convert to frames.
+    fps: The framerate to use for conversion.  Default: FPS.
+    """
+    return fps * milliseconds / 1000.0
+
+
 def main():
     """The application's entry point.
     
@@ -273,34 +293,35 @@ def main():
     bird = Bird(50, int(WIN_HEIGHT/2 - Bird.HEIGHT/2),
                 (images['bird-wingup'], images['bird-wingdown']))
     
-    # timer for adding new pipes
-    pygame.time.set_timer(PipePair.ADD_EVENT, PipePair.ADD_INTERVAL)
     pipes = deque()
     
     steps_to_jump = 2
+    frame_clock = 0  # this counter is only incremented if the game isn't paused
     score = 0
     done = paused = False
     while not done:
+        clock.tick(FPS)
+        
+        # Handle this 'manually'.  if we use pygame.time.set_timer(),
+        # pipe addition would be messed up when paused.
+        if not (paused or frame_clock % msec_to_frames(PipePair.ADD_INTERVAL)):
+            pygame.event.post(pygame.event.Event(PipePair.ADD_EVENT))
+        
         for e in pygame.event.get():
             if e.type == QUIT or (e.type == KEYUP and e.key == K_ESCAPE):
                 done = True
                 break
             elif e.type == KEYUP and e.key in (K_PAUSE, K_p):
                 paused = not paused
-            elif not paused:
-                # These events shouldn't be processed when the game is paused.
-                if e.type == MOUSEBUTTONUP or (e.type == KEYUP and
-                        e.key in (K_UP, K_RETURN, K_SPACE)):
-                    steps_to_jump = Bird.JUMP_STEPS
-                elif e.type == PipePair.ADD_EVENT:
-                    pp = PipePair(images['pipe-end'], images['pipe-body'])
-                    pipes.append(pp)
+            elif e.type == MOUSEBUTTONUP or (e.type == KEYUP and
+                    e.key in (K_UP, K_RETURN, K_SPACE)):
+                steps_to_jump = Bird.JUMP_STEPS
+            elif e.type == PipePair.ADD_EVENT:
+                pp = PipePair(images['pipe-end'], images['pipe-body'])
+                pipes.append(pp)
         
-        clock.tick(FPS)
         if paused:
-            # Don't draw anything and don't process events -- we don't
-            # want new pipes to be added while the game is paused!
-            continue
+            continue  # don't draw anything
         
         # check for collisions
         pipe_collision = any(p.collides_with(bird.rect) for p in pipes)
@@ -333,6 +354,7 @@ def main():
         display_surface.blit(score_surface, (score_x, PipePair.PIECE_HEIGHT))
         
         pygame.display.flip()
+        frame_clock += 1
     print('Game over! Score: %i' % score)
     pygame.quit()
 
