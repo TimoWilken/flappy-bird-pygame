@@ -191,15 +191,14 @@ class PipePair(pygame.sprite.Sprite):
         for i in range(1, self.bottom_pieces + 1):
             piece_pos = (0, WIN_HEIGHT - i*PipePair.PIECE_HEIGHT)
             self.image.blit(pipe_body_img, piece_pos)
-        bottom_pipe_end_y = (WIN_HEIGHT - 
-                             self.bottom_pieces*PipePair.PIECE_HEIGHT)
+        bottom_pipe_end_y = WIN_HEIGHT - self.bottom_height_px
         bottom_end_piece_pos = (0, bottom_pipe_end_y - PipePair.PIECE_HEIGHT)
         self.image.blit(pipe_end_img, bottom_end_piece_pos)
         
         # top pipe
         for i in range(self.top_pieces):
             self.image.blit(pipe_body_img, (0, i * PipePair.PIECE_HEIGHT))
-        top_pipe_end_y = self.top_pieces * PipePair.PIECE_HEIGHT
+        top_pipe_end_y = self.top_height_px
         self.image.blit(pipe_end_img, (0, top_pipe_end_y))
         
         # compensate for added end pieces
@@ -240,8 +239,8 @@ class PipePair(pygame.sprite.Sprite):
         """Get whether the bird collides with a pipe in this PipePair.
         
         Arguments:
-        rect: The pygame.Rect of the bird that should be tested for
-            collision with this PipePair.
+        bird: The Bird which should be tested for collision with this
+            PipePair.
         """
         return pygame.sprite.collide_mask(self, bird)
 
