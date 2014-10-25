@@ -60,8 +60,8 @@ class Bird(pygame.sprite.Sprite):
             very beginning of the game.
         images: A tuple containing the images used by this bird.  It
             must contain the following images, in the following order:
-            0. image of the bird with its wing pointing upward
-            1. image of the bird with its wing pointing downward
+                0. image of the bird with its wing pointing upward
+                1. image of the bird with its wing pointing downward
         """
         super(Bird, self).__init__()
         self.x, self.y = x, y
@@ -81,13 +81,12 @@ class Bird(pygame.sprite.Sprite):
         This Bird's msec_to_climb attribute will automatically be
         decreased accordingly if it was > 0 when this method was called.
 
-        Attributes:
+        Arguments:
         delta_frames: The number of frames elapsed since this method was
             last called.
         """
         if self.msec_to_climb > 0:
-            frac_climb_done = ((Bird.CLIMB_DURATION - self.msec_to_climb) /
-                               Bird.CLIMB_DURATION)
+            frac_climb_done = 1 - self.msec_to_climb/Bird.CLIMB_DURATION
             self.y -= (Bird.CLIMB_SPEED * frames_to_msec(delta_frames) *
                        (1 - math.cos(frac_climb_done * math.pi)))
             self.msec_to_climb -= frames_to_msec(delta_frames)
@@ -110,7 +109,7 @@ class Bird(pygame.sprite.Sprite):
 
     @property
     def mask(self):
-        """Get a bitmask for usage in collision detection.
+        """Get a bitmask for use in collision detection.
 
         The bitmask excludes all pixels in self.image with a
         transparency greater than 127."""
@@ -152,14 +151,11 @@ class PipePair(pygame.sprite.Sprite):
     PIECE_HEIGHT: The height, in pixels, of a pipe piece.
     ADD_INTERVAL: The interval, in milliseconds, in between adding new
         pipes.
-    ADD_EVENT: Identifies the event in the queue which signifies that a
-        new pipe should be added.
     """
 
     WIDTH = 80
     PIECE_HEIGHT = 32
     ADD_INTERVAL = 3000
-    ADD_EVENT = USEREVENT + 1
 
     def __init__(self, pipe_end_img, pipe_body_img):
         """Initialises a new random PipePair.
@@ -231,7 +227,7 @@ class PipePair(pygame.sprite.Sprite):
     def update(self, delta_frames=1):
         """Update the PipePair's position.
 
-        Attributes:
+        Arguments:
         delta_frames: The number of frames elapsed since this method was
             last called.
         """
@@ -275,7 +271,6 @@ def load_images():
         """
         file_name = os.path.join('.', 'images', img_file_name)
         img = pygame.image.load(file_name)
-        # converting all images before use speeds up blitting
         img.convert()
         return img
 
@@ -285,7 +280,7 @@ def load_images():
             # images for animating the flapping bird -- animated GIFs are
             # not supported in pygame
             'bird-wingup': load_image('bird_wing_up.png'),
-            'bird-wingdown': load_image('bird_wing_down.png'),}
+            'bird-wingdown': load_image('bird_wing_down.png')}
 
 
 def frames_to_msec(frames, fps=FPS):
@@ -340,7 +335,8 @@ def main():
         # Handle this 'manually'.  If we used pygame.time.set_timer(),
         # pipe addition would be messed up when paused.
         if not (paused or frame_clock % msec_to_frames(PipePair.ADD_INTERVAL)):
-            pygame.event.post(pygame.event.Event(PipePair.ADD_EVENT))
+            pp = PipePair(images['pipe-end'], images['pipe-body'])
+            pipes.append(pp)
 
         for e in pygame.event.get():
             if e.type == QUIT or (e.type == KEYUP and e.key == K_ESCAPE):
@@ -351,9 +347,6 @@ def main():
             elif e.type == MOUSEBUTTONUP or (e.type == KEYUP and
                     e.key in (K_UP, K_RETURN, K_SPACE)):
                 bird.msec_to_climb = Bird.CLIMB_DURATION
-            elif e.type == PipePair.ADD_EVENT:
-                pp = PipePair(images['pipe-end'], images['pipe-body'])
-                pipes.append(pp)
 
         if paused:
             continue  # don't draw anything
