@@ -269,7 +269,8 @@ def load_images():
         img_file_name: The file name (including its extension, e.g.
             '.png') of the required image, without a file path.
         """
-        file_name = os.path.join('.', 'images', img_file_name)
+        script_dir = os.path.dirname(__file__) #<-- absolute dir the script is in
+        file_name = os.path.join(script_dir, 'images', img_file_name)
         img = pygame.image.load(file_name)
         img.convert()
         return img
