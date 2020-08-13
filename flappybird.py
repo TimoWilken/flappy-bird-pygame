@@ -262,14 +262,18 @@ def load_images():
         """Return the loaded pygame image with the specified file name.
 
         This function looks for images in the game's images folder
-        (./images/).  All images are converted before being returned to
-        speed up blitting.
+        (dirname(__file__)/images/). All images are converted before being
+        returned to speed up blitting.
 
         Arguments:
         img_file_name: The file name (including its extension, e.g.
             '.png') of the required image, without a file path.
         """
-        file_name = os.path.join('.', 'images', img_file_name)
+        # Look for images relative to this script, so we don't have to "cd" to
+        # the script's directory before running it.
+        # See also: https://github.com/TimoWilken/flappy-bird-pygame/pull/3
+        file_name = os.path.join(os.path.dirname(__file__),
+                                 'images', img_file_name)
         img = pygame.image.load(file_name)
         img.convert()
         return img
