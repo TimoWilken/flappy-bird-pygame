@@ -7,8 +7,13 @@ import os
 from random import randint
 from collections import deque
 
+import numpy as np
 import pygame
 from pygame.locals import *
+
+import posecamera
+import cv2
+
 
 
 FPS = 60
@@ -44,8 +49,8 @@ class Bird(pygame.sprite.Sprite):
     """
 
     WIDTH = HEIGHT = 32
-    SINK_SPEED = 0.18
-    CLIMB_SPEED = 0.3
+    SINK_SPEED = 0.1
+    CLIMB_SPEED = 0.1
     CLIMB_DURATION = 333.3
 
     def __init__(self, x, y, msec_to_climb, images):
@@ -329,11 +334,31 @@ def main():
                 (images['bird-wingup'], images['bird-wingdown']))
 
     pipes = deque()
+    posecamera.load("checkpoint_iter_50000.pth", False)
 
+    cam = cv2.VideoCapture(0)
     frame_clock = 0  # this counter is only incremented if the game isn't paused
+
     score = 0
     done = paused = False
     while not done:
+
+
+        if cam.isOpened():
+            ret, image = cam.read()
+            image = cv2.flip(image, 1)
+            image = cv2.resize(image, (WIN_WIDTH, WIN_HEIGHT))
+
+            poses = posecamera.estimate(image)
+            for pose in poses:
+                # pose.draw(image)
+                nose = pose.keypoints[0]
+                bird.x = nose[0]
+                bird.y = nose[1]
+
+
+
+
         clock.tick(FPS)
 
         # Handle this 'manually'.  If we used pygame.time.set_timer(),
@@ -348,9 +373,7 @@ def main():
                 break
             elif e.type == KEYUP and e.key in (K_PAUSE, K_p):
                 paused = not paused
-            elif e.type == MOUSEBUTTONUP or (e.type == KEYUP and
-                    e.key in (K_UP, K_RETURN, K_SPACE)):
-                bird.msec_to_climb = Bird.CLIMB_DURATION
+
 
         if paused:
             continue  # don't draw anything
@@ -360,8 +383,14 @@ def main():
         if pipe_collision or 0 >= bird.y or bird.y >= WIN_HEIGHT - Bird.HEIGHT:
             done = True
 
-        for x in (0, WIN_WIDTH / 2):
-            display_surface.blit(images['background'], (x, 0))
+        image =cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        image = np.fliplr(image)
+        image = np.rot90(image)
+
+        pyframe = pygame.surfarray.make_surface(image)
+        display_surface.blit(pyframe, (0, 0))
+        #for x in (0, WIN_WIDTH / 2):
+        #    display_surface.blit(images['background'], (x, 0))
 
         while pipes and not pipes[0].visible:
             pipes.popleft()
@@ -380,13 +409,15 @@ def main():
                 p.score_counted = True
 
         score_surface = score_font.render(str(score), True, (255, 255, 255))
-        score_x = WIN_WIDTH/2 - score_surface.get_width()/2
+        score_x = WIN_WIDTH / 2 - score_surface.get_width() / 2
         display_surface.blit(score_surface, (score_x, PipePair.PIECE_HEIGHT))
 
         pygame.display.flip()
         frame_clock += 1
     print('Game over! Score: %i' % score)
     pygame.quit()
+
+
 
 
 if __name__ == '__main__':
