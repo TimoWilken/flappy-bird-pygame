@@ -1,11 +1,22 @@
-# Flappy Bird (using Pygame) 
+# Flappy Bird Pose Camera
 
 A clone of the popular app *Flappy Bird*, using Pygame.
 
-This code is forked from https://github.com/TimoWilken/flappy-bird-pygame 
+This code is forked from https://github.com/TimoWilken/flappy-bird-pygame
 
-## Playing the game
+# Magic behind the scenes
 
-You control the little bird. You can make it climb by pressing `↑` (up), `⏎`
-(return), `␣` (space), or clicking into the window. Don't crash into any pipes!
-For every pipe you pass without colliding, you get one point.
+```python
+        if cam.isOpened():
+            ret, image = cam.read()
+            image = cv2.flip(image, 1)
+            image = cv2.resize(image, (WIN_WIDTH, WIN_HEIGHT))
+
+            poses = posecamera.estimate(image)
+            for pose in poses:
+                # pose.draw(image)
+                nose = pose.keypoints[0]
+                bird.x = nose[0]
+                bird.y = nose[1]
+```
+
