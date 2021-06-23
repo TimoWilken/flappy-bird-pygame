@@ -1,3 +1,5 @@
+[![CodeFactor](https://www.codefactor.io/repository/github/wonder-tree/flappy-bird-pygame/badge)](https://www.codefactor.io/repository/github/wonder-tree/flappy-bird-pygame)
+
 # Flappy Bird Pose Camera
 
 A clone of the popular app *Flappy Bird*, using Pygame.
