@@ -14,8 +14,6 @@ from pygame.locals import *
 import posecamera
 import cv2
 
-
-
 FPS = 60
 ANIMATION_SPEED = 0.18  # pixels per millisecond
 WIN_WIDTH = 284 * 2     # BG image size: 284x512 px; tiled twice
@@ -334,7 +332,9 @@ def main():
                 (images['bird-wingup'], images['bird-wingdown']))
 
     pipes = deque()
-    posecamera.load("checkpoint_iter_50000.pth", False)
+    
+    # init PoseCamera sdk
+    det = posecamera.pose_tracker.PoseTracker()
 
     cam = cv2.VideoCapture(0)
     frame_clock = 0  # this counter is only incremented if the game isn't paused
@@ -343,21 +343,20 @@ def main():
     done = paused = False
     while not done:
 
-
         if cam.isOpened():
+
             ret, image = cam.read()
             image = cv2.flip(image, 1)
             image = cv2.resize(image, (WIN_WIDTH, WIN_HEIGHT))
 
-            poses = posecamera.estimate(image)
-            for pose in poses:
-                # pose.draw(image)
-                nose = pose.keypoints[0]
-                bird.x = nose[0]
-                bird.y = nose[1]
+            pose = det(image)
 
+            # get nose coordinates
+            nose = pose.keypoints["nose"]
 
-
+            # transform bird coordinates according to nose keypoint
+            bird.x = nose[1]
+            bird.y = nose[0]
 
         clock.tick(FPS)
 
@@ -421,6 +420,4 @@ def main():
 
 
 if __name__ == '__main__':
-    # If this module had been imported, __name__ would be 'flappybird'.
-    # It was executed (e.g. by double-clicking the file), so call main.
     main()

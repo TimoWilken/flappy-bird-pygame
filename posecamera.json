@@ -1,0 +1,9 @@
+
+{
+    "version": "0",
+    "title": "Flappy bird",
+    "description": "Flappy bird is an augmented reality game, you have to controll bird and pass trough tunnels using your nose.",
+    "entry": "flappybird.py",
+    "tags": "cognative skills, hand eye coordination",
+    "icon": "icon.png"
+}

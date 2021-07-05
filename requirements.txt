@@ -1,2 +1,2 @@
 pygame==2.0.1
-posecamera
+posecamera==2.1
