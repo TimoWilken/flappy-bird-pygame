@@ -385,8 +385,169 @@ def main():
 
         pygame.display.flip()
         frame_clock += 1
+    game_over = True
+    while True:
+        clock.tick(FPS)
+        # Handle this 'manually'.  If we used pygame.time.set_timer(),
+        # pipe addition would be messed up when paused.
+        if not (paused or frame_clock % msec_to_frames(PipePair.ADD_INTERVAL)):
+            pp = PipePair(images['pipe-end'], images['pipe-body'])
+            pipes.append(pp)
+
+        for e in pygame.event.get():
+            if e.type == QUIT or (e.type == KEYUP and e.key == K_ESCAPE):
+                done = True
+                break
+            elif e.type == KEYUP and e.key in (K_PAUSE, K_p):
+                paused = not paused
+            elif e.type == MOUSEBUTTONUP or (e.type == KEYUP and
+                    e.key in (K_UP, K_RETURN, K_SPACE)):
+                bird.msec_to_climb = Bird.CLIMB_DURATION
+
+        if paused:
+            continue  # don't draw anything
+
+        # check for collisions
+        pipe_collision = any(p.collides_with(bird) for p in pipes)
+        if pipe_collision or 0 >= bird.y or bird.y >= WIN_HEIGHT - Bird.HEIGHT:
+            game_over = True
+
+        for x in (0, WIN_WIDTH / 2):
+            display_surface.blit(images['background'], (x, 0))
+
+        while pipes and not pipes[0].visible:
+            pipes.popleft()
+
+        for p in pipes:
+            p.update()
+            display_surface.blit(p.image, p.rect)
+
+        bird.update()
+        display_surface.blit(bird.image, bird.rect)
+
+        # update and display score
+        for p in pipes:
+            if p.x + PipePair.WIDTH < bird.x and not p.score_counted:
+                score += 1
+                p.score_counted = True
+
+        score_surface = score_font.render(str(score), True, (255, 255, 255))
+        score_x = WIN_WIDTH/2 - score_surface.get_width()/2
+        display_surface.blit(score_surface, (score_x, PipePair.PIECE_HEIGHT))
+
+        pygame.display.flip()
+        frame_clock += 1
+        
+        if game_over:
+            for x in (0, WIN_WIDTH / 2):
+                display_surface.blit(images['background'], (x, 0))
+            while pipes and not pipes[0].visible:
+                pipes.popleft()
+            
+            bird = Bird(50, int(WIN_HEIGHT/2 - Bird.HEIGHT/2), 2,
+                (images['bird-wingup'], images['bird-wingdown']))
+            
+            pipes = deque()
+            
+            frame_clock = 0  # this counter is only incremented if the game isn't paused
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+
+            while game_over:
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        game_over = False
+
+                    if event.type == MOUSEBUTTONUP:
+                        game_over = False
+
+
+                display_surface.fill((0,0,0))
+                display_surface.blit(images['background'], (0, 0))
+
+                text_surface = score_font.render(f"Score: {str(score)}", True, (255, 255, 255))
+                text_rect = text_surface.get_rect()
+                text_rect.center = display_surface.get_rect().center
+                display_surface.blit(text_surface, text_rect)
+
+                play_again_text = score_font.render('Play Again?', True, (255, 255, 255))
+                play_again_rect = play_again_text.get_rect()
+                play_again_rect.center = display_surface.get_rect().center
+                display_surface.blit(play_again_text, play_again_rect)
+
+                pygame.display.flip()
+                clock.tick(FPS)
+
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+        
+        
+        
+        
+        
+        
+        
+        if game_over == False:
+            
+            bird = Bird(50, int(WIN_HEIGHT/2 - Bird.HEIGHT/2), 2,
+                (images['bird-wingup'], images['bird-wingdown']))
+            
+            pipes = deque()
+            
+            frame_clock = 0  # this counter is only incremented if the game isn't paused
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+            score = 0
+            done = paused = False
+        
+        if not game_over:
+            continue
     print('Game over! Score: %i' % score)
     pygame.quit()
+    
+    return True
 
 
 if __name__ == '__main__':
