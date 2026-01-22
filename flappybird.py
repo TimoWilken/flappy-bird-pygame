@@ -30,6 +30,8 @@ class Bird(pygame.sprite.Sprite):
     y: The bird's Y coordinate.
     msec_to_climb: The number of milliseconds left to climb, where a
         complete climb lasts Bird.CLIMB_DURATION milliseconds.
+    red_effect_end: Time when red circle effect ends (speed reduction)
+    orange_effect_end: Time when orange circle effect ends (increased gravity)
 
     Constants:
     WIDTH: The width, in pixels, of the bird's image.
@@ -47,6 +49,8 @@ class Bird(pygame.sprite.Sprite):
     SINK_SPEED = 0.18
     CLIMB_SPEED = 0.3
     CLIMB_DURATION = 333.3
+    RED_EFFECT_DURATION = 5000  # 5 seconds
+    ORANGE_EFFECT_DURATION = 10000  # 10 seconds
 
     def __init__(self, x, y, msec_to_climb, images):
         """Initialise a new Bird instance.
@@ -69,6 +73,8 @@ class Bird(pygame.sprite.Sprite):
         self._img_wingup, self._img_wingdown = images
         self._mask_wingup = pygame.mask.from_surface(self._img_wingup)
         self._mask_wingdown = pygame.mask.from_surface(self._img_wingdown)
+        self.red_effect_end = 0
+        self.orange_effect_end = 0
 
     def update(self, delta_frames=1):
         """Update the bird's position.
@@ -85,13 +91,30 @@ class Bird(pygame.sprite.Sprite):
         delta_frames: The number of frames elapsed since this method was
             last called.
         """
+        current_time = pygame.time.get_ticks()
+        
+        # Apply red circle effect (speed reduction)
+        climb_speed = Bird.CLIMB_SPEED
+        if current_time < self.red_effect_end:
+            climb_speed *= 0.8  # 20% speed reduction
+            
+        # Apply orange circle effect (increased gravity)
+        sink_speed = Bird.SINK_SPEED
+        if current_time < self.orange_effect_end:
+            sink_speed *= 1.5  # 50% increased gravity
+            
         if self.msec_to_climb > 0:
             frac_climb_done = 1 - self.msec_to_climb/Bird.CLIMB_DURATION
-            self.y -= (Bird.CLIMB_SPEED * frames_to_msec(delta_frames) *
-                       (1 - math.cos(frac_climb_done * math.pi)))
+            climb_distance = climb_speed * frames_to_msec(delta_frames) * (1 - math.cos(frac_climb_done * math.pi))
+            
+            # Apply orange effect to reduce climb effectiveness
+            if current_time < self.orange_effect_end:
+                climb_distance *= 0.7  # 30% less effective climb
+                
+            self.y -= climb_distance
             self.msec_to_climb -= frames_to_msec(delta_frames)
         else:
-            self.y += Bird.SINK_SPEED * frames_to_msec(delta_frames)
+            self.y += sink_speed * frames_to_msec(delta_frames)
 
     @property
     def image(self):
@@ -122,6 +145,99 @@ class Bird(pygame.sprite.Sprite):
     def rect(self):
         """Get the bird's position, width, and height, as a pygame.Rect."""
         return Rect(self.x, self.y, Bird.WIDTH, Bird.HEIGHT)
+
+
+class Circle(pygame.sprite.Sprite):
+    """Represents a dynamic circle obstacle.
+
+    Attributes:
+    x: The Circle's X position.
+    y: The Circle's Y position.
+    type: The type of circle ("red", "orange", "yellow").
+    speed: The vertical movement speed.
+    direction: The current movement direction (1 for up, -1 for down).
+    image: A pygame.Surface which can be blitted to the display surface.
+    mask: A bitmask for collision detection.
+    """
+
+    WIDTH = 80  # Same as pipe width
+    RED_SPEED = 1000 / 2  # 2 seconds to traverse Y axis
+    ORANGE_SPEED = 1000 / 1.5  # 1.5 seconds
+    YELLOW_SPEED = 1000 / 1.75  # 1.75 seconds
+    RED_HEIGHT = WIN_HEIGHT // 6
+    ORANGE_HEIGHT = WIN_HEIGHT // 6
+    YELLOW_HEIGHT = WIN_HEIGHT // 4
+
+    def __init__(self, circle_type):
+        super(Circle, self).__init__()
+        self.x = float(WIN_WIDTH - 1)
+        self.type = circle_type
+        self.direction = 1  # Start moving down
+        self.score_counted = False
+
+        # Set height and speed based on type
+        if self.type == "red":
+            self.height = Circle.RED_HEIGHT
+            self.speed = Circle.RED_SPEED
+            self.color = (255, 0, 0)
+        elif self.type == "orange":
+            self.height = Circle.ORANGE_HEIGHT
+            self.speed = Circle.ORANGE_SPEED
+            self.color = (255, 165, 0)
+        else:  # yellow
+            self.height = Circle.YELLOW_HEIGHT
+            self.speed = Circle.YELLOW_SPEED
+            self.color = (255, 255, 0)
+
+        # Random initial Y position within valid range
+        self.y = randint(self.height // 2, WIN_HEIGHT - self.height // 2)
+
+        # Create the circle image
+        self.image = pygame.Surface((Circle.WIDTH, self.height), SRCALPHA)
+        self.image.convert()
+        self.image.fill((0, 0, 0, 0))
+        pygame.draw.ellipse(self.image, self.color, 
+                           (0, 0, Circle.WIDTH, self.height))
+
+        # Create mask for collision detection
+        self.mask = pygame.mask.from_surface(self.image)
+
+    def update(self, delta_frames=1):
+        """Update the circle's position."""
+        self.x -= ANIMATION_SPEED * frames_to_msec(delta_frames)
+
+        # Vertical movement
+        distance = self.speed / FPS * delta_frames
+        self.y += self.direction * distance
+
+        # Reverse direction when hitting boundaries
+        if self.y <= self.height // 2:
+            self.y = self.height // 2
+            self.direction = 1
+        elif self.y >= WIN_HEIGHT - self.height // 2:
+            self.y = WIN_HEIGHT - self.height // 2
+            self.direction = -1
+
+    @property
+    def visible(self):
+        """Get whether this Circle is on screen."""
+        return -Circle.WIDTH < self.x < WIN_WIDTH
+
+    @property
+    def rect(self):
+        """Get the Rect which contains this Circle."""
+        return Rect(self.x, self.y - self.height // 2, Circle.WIDTH, self.height)
+
+    def collides_with(self, bird):
+        """Check collision with bird."""
+        # Check if rects overlap first (fast check)
+        if not self.rect.colliderect(bird.rect):
+            return False
+        
+        # If rects overlap, do pixel-perfect collision check
+        offset_x = int(self.x - bird.x)
+        offset_y = int((self.y - self.height // 2) - bird.y)
+        return bird.mask.overlap(self.mask, (offset_x, offset_y))
 
 
 class PipePair(pygame.sprite.Sprite):
@@ -329,6 +445,9 @@ def main():
                 (images['bird-wingup'], images['bird-wingdown']))
 
     pipes = deque()
+    circles = deque()
+    circle_spawn_timer = 0
+    CIRCLE_ADD_INTERVAL = 4000  # 4 seconds between circles
 
     frame_clock = 0  # this counter is only incremented if the game isn't paused
     score = 0
@@ -341,6 +460,22 @@ def main():
         if not (paused or frame_clock % msec_to_frames(PipePair.ADD_INTERVAL)):
             pp = PipePair(images['pipe-end'], images['pipe-body'])
             pipes.append(pp)
+
+        # Add circles at intervals
+        if not paused:
+            circle_spawn_timer += frames_to_msec(1)
+            if circle_spawn_timer >= CIRCLE_ADD_INTERVAL:
+                circle_spawn_timer = 0
+                # Choose circle type based on 3:2:1 ratio
+                rand_val = randint(1, 6)
+                if rand_val <= 3:
+                    circle_type = "red"
+                elif rand_val <= 5:
+                    circle_type = "orange"
+                else:
+                    circle_type = "yellow"
+                circle = Circle(circle_type)
+                circles.append(circle)
 
         for e in pygame.event.get():
             if e.type == QUIT or (e.type == KEYUP and e.key == K_ESCAPE):
@@ -357,6 +492,19 @@ def main():
 
         # check for collisions
         pipe_collision = any(p.collides_with(bird) for p in pipes)
+        circle_collisions = [c for c in circles if c.collides_with(bird)]
+        
+        # Handle circle collisions
+        current_time = pygame.time.get_ticks()
+        for circle in circle_collisions:
+            if circle.type == "red":
+                bird.red_effect_end = current_time + Bird.RED_EFFECT_DURATION
+            elif circle.type == "orange":
+                bird.orange_effect_end = current_time + Bird.ORANGE_EFFECT_DURATION
+            else:  # yellow
+                done = True
+                break
+            
         if pipe_collision or 0 >= bird.y or bird.y >= WIN_HEIGHT - Bird.HEIGHT:
             done = True
 
@@ -370,6 +518,14 @@ def main():
             p.update()
             display_surface.blit(p.image, p.rect)
 
+        # Update and draw circles
+        while circles and not circles[0].visible:
+            circles.popleft()
+
+        for circle in circles:
+            circle.update()
+            display_surface.blit(circle.image, circle.rect)
+
         bird.update()
         display_surface.blit(bird.image, bird.rect)
 
@@ -379,9 +535,24 @@ def main():
                 score += 1
                 p.score_counted = True
 
+        # Count score for circles
+        for circle in circles:
+            if circle.x + Circle.WIDTH < bird.x and not circle.score_counted:
+                score += 1
+                circle.score_counted = True
+
         score_surface = score_font.render(str(score), True, (255, 255, 255))
         score_x = WIN_WIDTH/2 - score_surface.get_width()/2
         display_surface.blit(score_surface, (score_x, PipePair.PIECE_HEIGHT))
+
+        # Display effect status
+        current_time = pygame.time.get_ticks()
+        if current_time < bird.red_effect_end:
+            effect_text = score_font.render("Speed Reduced!", True, (255, 0, 0))
+            display_surface.blit(effect_text, (10, PipePair.PIECE_HEIGHT + 30))
+        if current_time < bird.orange_effect_end:
+            effect_text = score_font.render("Increased Gravity!", True, (255, 165, 0))
+            display_surface.blit(effect_text, (10, PipePair.PIECE_HEIGHT + 60))
 
         pygame.display.flip()
         frame_clock += 1
